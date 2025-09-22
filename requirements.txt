@@ -1,0 +1,17 @@
+streamlit
+streamlit-option-menu
+pandas
+plotly
+scikit-learn
+tensorflow
+fpdf
+matplotlib
+seaborn
+statsmodels
+anthropic
+langchain
+langchain-community
+faiss-cpu
+transformers
+sentence-transformers
+PyPDF2
