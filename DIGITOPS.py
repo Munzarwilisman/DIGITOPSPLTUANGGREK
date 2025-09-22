@@ -1040,12 +1040,17 @@ elif selected == "Machine Learning":
         st.stop()
     
     # Sort by date
-    df = df.sort_values(date_column)
-    
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔧 Data Preparation", "📊 Exploration Data Analysis", "🔍 Anomaly Detection And AI Evaluation", "🎯Prediction Analysis", "📈 Forecasting"])
-    
-    with tab1:
-        st.header("Persiapan Data (Seluruh Periode)")
+df = df.sort_values(date_column)
+
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    ["🔧 Data Preparation", 
+     "📊 Exploration Data Analysis", 
+     "🔍 Anomaly Detection And AI Evaluation", 
+     "🎯 Prediction Analysis", 
+     "📈 Forecasting"]
+)
+with tab1:
+    st.header("Persiapan Data (Seluruh Periode)")
         
         # Step 1: Pilih parameter target untuk pemfilteran
         st.subheader("1. Pilih Parameter Target untuk Pemfilteran Data")
@@ -1433,8 +1438,8 @@ elif selected == "Machine Learning":
                 st.session_state.filter_threshold = filter_threshold
                 st.session_state.mask_to_process = mask_to_process
     
-         with tab2:
-            st.header("📊 Exploration Data Analysis")
+with tab2:
+    st.header("📊 Exploration Data Analysis")
     
     # Import required libraries dalam scope tab
     try:
@@ -1775,8 +1780,8 @@ elif selected == "Machine Learning":
 # ⚠️ IMPORTANT: Semua kode di atas berada dalam scope 'with tab2:'
 # Tidak ada kode yang keluar dari indentasi tab
     
-    with tab3:
-        st.header("Deteksi Anomali (30 Hari Terakhir vs Pola Historis)")
+with tab3:
+    st.header("Deteksi Anomali (30 Hari Terakhir vs Pola Historis)")
         
         if "processed_data" not in st.session_state:
             st.warning("Lakukan data preparation terlebih dahulu di tab sebelumnya")
