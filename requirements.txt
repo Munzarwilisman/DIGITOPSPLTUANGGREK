@@ -16,3 +16,5 @@ transformers
 sentence-transformers
 PyPDF2
 openpyxl
+prophet
+
