@@ -1434,7 +1434,7 @@ elif selected == "Machine Learning":
                 st.session_state.mask_to_process = mask_to_process
     
 with tab2:
-    st.header("Exploration Data Analysis (EDA)")
+    st.header("Exploration Data Analysis")
     
     # Import required libraries dalam scope tab
     try:
