@@ -1433,8 +1433,8 @@ elif selected == "Machine Learning":
                 st.session_state.filter_threshold = filter_threshold
                 st.session_state.mask_to_process = mask_to_process
     
-with tab2:
-    st.header("Exploration Data Analysis")
+    with tab2:
+        st.header("📊 Exploration Data Analysis")
     
     # Import required libraries dalam scope tab
     try:
@@ -2756,8 +2756,8 @@ def get_prediction_insight(input_param, input_value, results, correlations, meth
 
 
 # ===================== TAB 4 =====================
-with tab4:
-    st.header("🔮 Prediksi Parameter Berdasarkan Input")
+    with tab4:
+        st.header("🔮 Prediksi Parameter Berdasarkan Input")
 
     # Cek jika data sudah diproses
     if "processed_data" not in st.session_state:
@@ -2996,8 +2996,8 @@ with tab4:
             except Exception as e:
                 st.error(f"Gagal membuat insight: {str(e)}")
 # ========================== TAB 5: FORECASTING ==========================
-with tab5:
-    st.header("📈 Forecasting Parameter ")
+    with tab5:
+        st.header("📈 Forecasting Parameter ")
 
     # Pastikan data ada
     if "processed_data" not in st.session_state:
