@@ -1438,347 +1438,344 @@ with tab1:
                 st.session_state.filter_threshold = filter_threshold
                 st.session_state.mask_to_process = mask_to_process
     
-with tab2:
-    st.header("📊 Exploration Data Analysis")
-    
-    # Import required libraries dalam scope tab
-    try:
-        import plotly.graph_objects as go
-        import numpy as np
-        from scipy import stats
-        from statsmodels.graphics.tsaplots import plot_acf
-        import matplotlib.pyplot as plt
-        plt.style.use('dark_background')  # Set dark theme for matplotlib
-    except ImportError as e:
-        st.warning(f"Beberapa library tidak tersedia: {str(e)}")
-        st.warning("Install dengan: pip install scipy statsmodels matplotlib")
-        # Set default values untuk library yang tidak ada
-        go = None
-        stats = None
-        plot_acf = None
-    
-    if "processed_data" not in st.session_state:
-        st.warning("Lakukan data preparation terlebih dahulu di tab Data Preparation")
-        st.stop()
-    
-    # ⛔️ jangan ubah langsung session_state → bikin copy lokal
-    try:
-        processed_data = st.session_state.processed_data.copy()
-        target_param = st.session_state.target_param
-        date_column = st.session_state.date_column
-    except Exception as e:
-        st.error(f"Error mengakses data: {str(e)}")
-        st.stop()
-    
-    # Pilih kolom yang akan dianalisis
-    cols_with_processed = [c for c in processed_data.columns if c != date_column]
-    default_col = target_param
-    
-    processed_cols = [c for c in cols_with_processed if c.startswith(f"{target_param}_")]
-    if processed_cols:
-        default_col = processed_cols[0]
-    
-    analysis_col = st.selectbox(
-        "Pilih Kolom Utama untuk Analisis:",
-        options=cols_with_processed,
-        index=cols_with_processed.index(default_col) if default_col in cols_with_processed else 0,
-        key="eda_col_select"
-    )
-
-    # Pilih parameter kedua (opsional)
-    st.markdown("### 🔀 Pilih Parameter Kedua (Opsional)")
-    analysis_col2 = st.selectbox(
-        "Pilih Parameter Kedua:",
-        options=["None"] + cols_with_processed,
-        index=0,
-        key="eda_col_select2"
-    )
-    
-    # Statistik Deskriptif
-    st.markdown("### 📊 Statistik Deskriptif")
-    try:
-        stats_desc = processed_data[analysis_col].describe()
+ with tab2:
+        st.header("📊 Exploration Data Analysis")
         
-        cols = st.columns(6)
-        metrics = [
-            ('Minimum', stats_desc['min']),
-            ('Q1', stats_desc['25%']),
-            ('Median', stats_desc['50%']),
-            ('Mean', stats_desc['mean']),
-            ('Q3', stats_desc['75%']),
-            ('Maximum', stats_desc['max'])
-        ]
-        
-        for i, (label, value) in enumerate(metrics):
-            with cols[i]:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div>{label}</div>
-                    <div class="metric-value">{value:.2f}</div>
-                </div>
-                """, unsafe_allow_html=True)
-    except Exception as e:
-        st.error(f"Error menampilkan statistik: {str(e)}")
-    
-    # Grafik Tren
-    st.markdown("### 📈 Grafik Tren")
-    try:
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            line_color = st.color_picker("Pilih Warna Garis:", value='#FFA500', key="eda_line_color")
-        with col2:
-            show_ma = st.checkbox("Tampilkan Moving Average", value=True, key="eda_show_ma")
-        
-        y_cols = [analysis_col] if analysis_col2 == "None" else [analysis_col, analysis_col2]
-        
-        fig_line = px.line(
-            processed_data,
-            x=date_column,
-            y=y_cols,
-            title=f"<b>Tren {' & '.join(y_cols)}</b>",
-            template='plotly_dark',
-            color_discrete_sequence=['#FFA500', '#00FF7F']
-        )
-
-        if show_ma and analysis_col2 == "None":
-            # Buat copy local untuk moving average agar tidak mengubah session_state
-            temp_data = processed_data.copy()
-            temp_data['MA_7'] = temp_data[analysis_col].rolling(window=7).mean()
-            fig_line.add_scatter(
-                x=temp_data[date_column],
-                y=temp_data['MA_7'],
-                name='Moving Avg (7)',
-                line=dict(color='#00FFFF', width=2, dash='dot')
-            )
-
-        st.plotly_chart(fig_line, use_container_width=True, theme="streamlit")
-    except Exception as e:
-        st.error(f"Error membuat grafik tren: {str(e)}")
-    
-    # Histogram
-    st.markdown("### 📊 Histogram")
-    try:
-        fig_hist = px.histogram(
-            processed_data, 
-            x=analysis_col, 
-            template='plotly_dark',
-            color_discrete_sequence=['#FFA500']
-        )
-        fig_hist.update_layout(
-            bargap=0.1,
-            xaxis_title=analysis_col,
-            yaxis_title='Frekuensi'
-        )
-        st.plotly_chart(fig_hist, use_container_width=True, theme="streamlit")
-    except Exception as e:
-        st.error(f"Error membuat histogram: {str(e)}")
-
-    # Box Plot
-    st.markdown("### 📦 Box Plot")
-    try:
-        fig_box = px.box(
-            processed_data, 
-            y=analysis_col, 
-            template='plotly_dark',
-            color_discrete_sequence=['#FFA500']
-        )
-        fig_box.update_layout(
-            yaxis_title=analysis_col,
-            showlegend=False
-        )
-        st.plotly_chart(fig_box, use_container_width=True, theme="streamlit")
-    except Exception as e:
-        st.error(f"Error membuat box plot: {str(e)}")
-
-    # Correlation Matrix
-    st.markdown("### 🔗 Correlation Matrix")
-    try:
-        numeric_cols = processed_data.select_dtypes(include=['number']).columns.tolist()
-        if date_column in numeric_cols:
-            numeric_cols.remove(date_column)
-            
-        if len(numeric_cols) > 1:
-            corr_matrix = processed_data[numeric_cols].corr()
-            fig_corr = px.imshow(
-                corr_matrix,
-                text_auto=True,
-                aspect="auto",
-                color_continuous_scale='RdBu_r',
-                template='plotly_dark',
-                title='Korelasi Antar Parameter'
-            )
-            fig_corr.update_layout(height=600)
-            st.plotly_chart(fig_corr, use_container_width=True)
-        else:
-            st.warning("Tidak cukup parameter numerik untuk menampilkan matriks korelasi")
-    except Exception as e:
-        st.error(f"Error membuat correlation matrix: {str(e)}")
-    
-    # Density Plot
-    st.markdown("### 🌊 Density Plot (KDE)")
-    try:
-        fig_kde = px.histogram(
-            processed_data,
-            x=analysis_col,
-            nbins=40,
-            histnorm='density',
-            marginal="box",
-            template='plotly_dark',
-            color_discrete_sequence=['#FF4500']
-        )
-        st.plotly_chart(fig_kde, use_container_width=True, theme="streamlit")
-    except Exception as e:
-        st.error(f"Error membuat density plot: {str(e)}")
-
-    # Violin Plot
-    st.markdown("### 🎻 Violin Plot")
-    try:
-        fig_violin = px.violin(
-            processed_data,
-            y=analysis_col,
-            box=True,
-            points="all",
-            template="plotly_dark",
-            color_discrete_sequence=['#32CD32']
-        )
-        st.plotly_chart(fig_violin, use_container_width=True, theme="streamlit")
-    except Exception as e:
-        st.error(f"Error membuat violin plot: {str(e)}")
-
-    # Lag Plot
-    st.markdown("### 🔁 Lag Plot")
-    try:
-        if len(processed_data) > 1:
-            fig_lag = px.scatter(
-                x=processed_data[analysis_col][:-1].values,
-                y=processed_data[analysis_col][1:].values,
-                labels={'x': f'{analysis_col} (t)', 'y': f'{analysis_col} (t+1)'},
-                template="plotly_dark",
-                title=f"Lag Plot - {analysis_col}"
-            )
-            fig_lag.update_traces(marker=dict(size=6, color="#FFD700", opacity=0.8))
-            st.plotly_chart(fig_lag, use_container_width=True, theme="streamlit")
-        else:
-            st.warning("Data tidak cukup untuk lag plot")
-    except Exception as e:
-        st.error(f"Error membuat lag plot: {str(e)}")
-
-    # Autocorrelation (ACF)
-    st.markdown("### 📉 Autocorrelation (ACF)")
-    try:
-        if plot_acf is not None:
-            # Buat figure matplotlib dengan dark theme
-            fig_acf, ax = plt.subplots(figsize=(10, 4), facecolor='#0E1117')
-            ax.set_facecolor('#0E1117')
-            
-            # Clean data untuk ACF
-            clean_data = processed_data[analysis_col].dropna()
-            if len(clean_data) > 30:
-                plot_acf(clean_data, ax=ax, lags=min(30, len(clean_data)//4), color='#FFA500')
-                ax.set_title(f'Autocorrelation Function - {analysis_col}', color='white')
-                ax.tick_params(colors='white')
-                ax.grid(True, alpha=0.3)
-                st.pyplot(fig_acf)
-                plt.close(fig_acf)  # Clean up matplotlib figure
-            else:
-                st.warning("Data tidak cukup untuk analisis autocorrelation (minimal 30 data points)")
-        else:
-            st.warning("Statsmodels tidak tersedia untuk ACF plot")
-    except Exception as e:
-        st.error(f"Error membuat ACF plot: {str(e)}")
-
-    # Rolling Statistics
-    st.markdown("### 📊 Rolling Statistics (Mean & Std)")
-    try:
-        temp_df = processed_data.copy()  # Local copy
-        temp_df['Rolling_Mean'] = temp_df[analysis_col].rolling(window=7).mean()
-        temp_df['Rolling_Std'] = temp_df[analysis_col].rolling(window=7).std()
-        
-        fig_roll = px.line(
-            temp_df,
-            x=date_column,
-            y=[analysis_col, 'Rolling_Mean', 'Rolling_Std'],
-            template="plotly_dark",
-            title=f"Rolling Statistics - {analysis_col}"
-        )
-        fig_roll.update_layout(
-            yaxis_title='Value',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
-        st.plotly_chart(fig_roll, use_container_width=True, theme="streamlit")
-    except Exception as e:
-        st.error(f"Error membuat rolling statistics: {str(e)}")
-
-    # Scatter Matrix (Pair Plot)
-    if analysis_col2 != "None":
-        st.markdown("### 🔎 Scatter Matrix (Pair Plot)")
+        # Import required libraries dalam scope tab
         try:
-            scatter_cols = [analysis_col, analysis_col2]
-            fig_scatter_matrix = px.scatter_matrix(
-                processed_data[scatter_cols],
-                dimensions=scatter_cols,
-                template="plotly_dark",
-                color_discrete_sequence=['#FF7F50'],
-                title=f"Scatter Matrix: {analysis_col} vs {analysis_col2}"
-            )
-            fig_scatter_matrix.update_layout(height=600)
-            st.plotly_chart(fig_scatter_matrix, use_container_width=True, theme="streamlit")
+            import plotly.graph_objects as go
+            import numpy as np
+            from scipy import stats
+            from statsmodels.graphics.tsaplots import plot_acf
+            import matplotlib.pyplot as plt
+            plt.style.use('dark_background')  # Set dark theme for matplotlib
+        except ImportError as e:
+            st.warning(f"Beberapa library tidak tersedia: {str(e)}")
+            st.warning("Install dengan: pip install scipy statsmodels matplotlib")
+            # Set default values untuk library yang tidak ada
+            go = None
+            stats = None
+            plot_acf = None
+        
+        if "processed_data" not in st.session_state:
+            st.warning("Lakukan data preparation terlebih dahulu di tab Data Preparation")
+            st.stop()
+        
+        # ⛔️ jangan ubah langsung session_state → bikin copy lokal
+        try:
+            processed_data = st.session_state.processed_data.copy()
+            target_param = st.session_state.target_param
+            date_column = st.session_state.date_column
         except Exception as e:
-            st.error(f"Error membuat scatter matrix: {str(e)}")
+            st.error(f"Error mengakses data: {str(e)}")
+            st.stop()
+        
+        # Pilih kolom yang akan dianalisis
+        cols_with_processed = [c for c in processed_data.columns if c != date_column]
+        default_col = target_param
+        
+        processed_cols = [c for c in cols_with_processed if c.startswith(f"{target_param}_")]
+        if processed_cols:
+            default_col = processed_cols[0]
+        
+        analysis_col = st.selectbox(
+            "Pilih Kolom Utama untuk Analisis:",
+            options=cols_with_processed,
+            index=cols_with_processed.index(default_col) if default_col in cols_with_processed else 0,
+            key="eda_col_select"
+        )
 
-        # Scatter Plot Antar Parameter
-        st.markdown("### 🔎 Scatter Plot Antar 2 Parameter")
+        # Pilih parameter kedua (opsional)
+        st.markdown("### 🔀 Pilih Parameter Kedua (Opsional)")
+        analysis_col2 = st.selectbox(
+            "Pilih Parameter Kedua:",
+            options=["None"] + cols_with_processed,
+            index=0,
+            key="eda_col_select2"
+        )
+        
+        # Statistik Deskriptif
+        st.markdown("### 📊 Statistik Deskriptif")
         try:
-            fig_scatter = px.scatter(
-                processed_data,
-                x=analysis_col,
-                y=analysis_col2,
-                template="plotly_dark",
-                color_discrete_sequence=['#FF69B4'],
-                title=f"Correlation: {analysis_col} vs {analysis_col2}"
-            )
-            fig_scatter.update_traces(marker=dict(size=8, opacity=0.7))
+            stats_desc = processed_data[analysis_col].describe()
             
-            # Add correlation coefficient
-            corr_coef = processed_data[[analysis_col, analysis_col2]].corr().iloc[0, 1]
-            fig_scatter.add_annotation(
-                text=f"Correlation: {corr_coef:.3f}",
-                xref="paper", yref="paper",
-                x=0.02, y=0.98,
-                showarrow=False,
-                font=dict(size=14, color="white"),
-                bgcolor="rgba(0,0,0,0.7)",
-                bordercolor="#FF69B4",
-                borderwidth=1
-            )
+            cols = st.columns(6)
+            metrics = [
+                ('Minimum', stats_desc['min']),
+                ('Q1', stats_desc['25%']),
+                ('Median', stats_desc['50%']),
+                ('Mean', stats_desc['mean']),
+                ('Q3', stats_desc['75%']),
+                ('Maximum', stats_desc['max'])
+            ]
             
-            st.plotly_chart(fig_scatter, use_container_width=True, theme="streamlit")
-        except Exception as e:
-            st.error(f"Error membuat scatter plot: {str(e)}")
-    
-    # Tombol Analisa AI - di akhir tab
-    st.markdown("---")
-    if st.button("🤖 Analisa AI PLTU ANGGREK", key="eda_ai_analysis"):
-        try:
-            with st.spinner("⏳ Menganalisis data dengan AI..."):
-                st.markdown("#### 🤖 Insight PLTU Anggrek")
-                
-                # Pastikan fungsi get_ai_insight ada
-                if 'get_ai_insight' in globals():
-                    clean_data = processed_data[analysis_col].dropna()
-                    ai_result = get_ai_insight(analysis_col, clean_data, "EDA Analysis")
+            for i, (label, value) in enumerate(metrics):
+                with cols[i]:
                     st.markdown(f"""
-                    <div style='background-color:#1E1E1E; padding:15px; border-radius:10px; border-left:4px solid #FFA500;'>
-                        {ai_result}
+                    <div style='background-color:#1E1E1E; padding:10px; border-radius:5px; text-align:center;'>
+                        <div style='font-size:12px;'>{label}</div>
+                        <div style='font-size:16px; font-weight:bold; color:#FFA500;'>{value:.2f}</div>
                     </div>
                     """, unsafe_allow_html=True)
-                else:
-                    st.info("Fitur AI analysis belum tersedia. Pastikan fungsi get_ai_insight sudah didefinisikan.")
         except Exception as e:
-            st.error(f"Error dalam AI analysis: {str(e)}")
+            st.error(f"Error menampilkan statistik: {str(e)}")
+        
+        # Grafik Tren
+        st.markdown("### 📈 Grafik Tren")
+        try:
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                line_color = st.color_picker("Pilih Warna Garis:", value='#FFA500', key="eda_line_color")
+            with col2:
+                show_ma = st.checkbox("Tampilkan Moving Average", value=True, key="eda_show_ma")
+            
+            y_cols = [analysis_col] if analysis_col2 == "None" else [analysis_col, analysis_col2]
+            
+            fig_line = px.line(
+                processed_data,
+                x=date_column,
+                y=y_cols,
+                title=f"<b>Tren {' & '.join(y_cols)}</b>",
+                template='plotly_dark',
+                color_discrete_sequence=['#FFA500', '#00FF7F']
+            )
 
-# ⚠️ IMPORTANT: Semua kode di atas berada dalam scope 'with tab2:'
-# Tidak ada kode yang keluar dari indentasi tab
+            if show_ma and analysis_col2 == "None":
+                # Buat copy local untuk moving average agar tidak mengubah session_state
+                temp_data = processed_data.copy()
+                temp_data['MA_7'] = temp_data[analysis_col].rolling(window=7).mean()
+                fig_line.add_scatter(
+                    x=temp_data[date_column],
+                    y=temp_data['MA_7'],
+                    name='Moving Avg (7)',
+                    line=dict(color='#00FFFF', width=2, dash='dot')
+                )
+
+            st.plotly_chart(fig_line, use_container_width=True, theme="streamlit")
+        except Exception as e:
+            st.error(f"Error membuat grafik tren: {str(e)}")
+        
+        # Histogram
+        st.markdown("### 📊 Histogram")
+        try:
+            fig_hist = px.histogram(
+                processed_data, 
+                x=analysis_col, 
+                template='plotly_dark',
+                color_discrete_sequence=['#FFA500']
+            )
+            fig_hist.update_layout(
+                bargap=0.1,
+                xaxis_title=analysis_col,
+                yaxis_title='Frekuensi'
+            )
+            st.plotly_chart(fig_hist, use_container_width=True, theme="streamlit")
+        except Exception as e:
+            st.error(f"Error membuat histogram: {str(e)}")
+
+        # Box Plot
+        st.markdown("### 📦 Box Plot")
+        try:
+            fig_box = px.box(
+                processed_data, 
+                y=analysis_col, 
+                template='plotly_dark',
+                color_discrete_sequence=['#FFA500']
+            )
+            fig_box.update_layout(
+                yaxis_title=analysis_col,
+                showlegend=False
+            )
+            st.plotly_chart(fig_box, use_container_width=True, theme="streamlit")
+        except Exception as e:
+            st.error(f"Error membuat box plot: {str(e)}")
+
+        # Correlation Matrix
+        st.markdown("### 🔗 Correlation Matrix")
+        try:
+            numeric_cols = processed_data.select_dtypes(include=['number']).columns.tolist()
+            if date_column in numeric_cols:
+                numeric_cols.remove(date_column)
+                
+            if len(numeric_cols) > 1:
+                corr_matrix = processed_data[numeric_cols].corr()
+                fig_corr = px.imshow(
+                    corr_matrix,
+                    text_auto=True,
+                    aspect="auto",
+                    color_continuous_scale='RdBu_r',
+                    template='plotly_dark',
+                    title='Korelasi Antar Parameter'
+                )
+                fig_corr.update_layout(height=600)
+                st.plotly_chart(fig_corr, use_container_width=True)
+            else:
+                st.warning("Tidak cukup parameter numerik untuk menampilkan matriks korelasi")
+        except Exception as e:
+            st.error(f"Error membuat correlation matrix: {str(e)}")
+        
+        # Density Plot
+        st.markdown("### 🌊 Density Plot (KDE)")
+        try:
+            fig_kde = px.histogram(
+                processed_data,
+                x=analysis_col,
+                nbins=40,
+                histnorm='density',
+                marginal="box",
+                template='plotly_dark',
+                color_discrete_sequence=['#FF4500']
+            )
+            st.plotly_chart(fig_kde, use_container_width=True, theme="streamlit")
+        except Exception as e:
+            st.error(f"Error membuat density plot: {str(e)}")
+
+        # Violin Plot
+        st.markdown("### 🎻 Violin Plot")
+        try:
+            fig_violin = px.violin(
+                processed_data,
+                y=analysis_col,
+                box=True,
+                points="all",
+                template="plotly_dark",
+                color_discrete_sequence=['#32CD32']
+            )
+            st.plotly_chart(fig_violin, use_container_width=True, theme="streamlit")
+        except Exception as e:
+            st.error(f"Error membuat violin plot: {str(e)}")
+
+        # Lag Plot
+        st.markdown("### 🔁 Lag Plot")
+        try:
+            if len(processed_data) > 1:
+                fig_lag = px.scatter(
+                    x=processed_data[analysis_col][:-1].values,
+                    y=processed_data[analysis_col][1:].values,
+                    labels={'x': f'{analysis_col} (t)', 'y': f'{analysis_col} (t+1)'},
+                    template="plotly_dark",
+                    title=f"Lag Plot - {analysis_col}"
+                )
+                fig_lag.update_traces(marker=dict(size=6, color="#FFD700", opacity=0.8))
+                st.plotly_chart(fig_lag, use_container_width=True, theme="streamlit")
+            else:
+                st.warning("Data tidak cukup untuk lag plot")
+        except Exception as e:
+            st.error(f"Error membuat lag plot: {str(e)}")
+
+        # Autocorrelation (ACF)
+        st.markdown("### 📉 Autocorrelation (ACF)")
+        try:
+            if plot_acf is not None:
+                # Buat figure matplotlib dengan dark theme
+                fig_acf, ax = plt.subplots(figsize=(10, 4), facecolor='#0E1117')
+                ax.set_facecolor('#0E1117')
+                
+                # Clean data untuk ACF
+                clean_data = processed_data[analysis_col].dropna()
+                if len(clean_data) > 30:
+                    plot_acf(clean_data, ax=ax, lags=min(30, len(clean_data)//4), color='#FFA500')
+                    ax.set_title(f'Autocorrelation Function - {analysis_col}', color='white')
+                    ax.tick_params(colors='white')
+                    ax.grid(True, alpha=0.3)
+                    st.pyplot(fig_acf)
+                    plt.close(fig_acf)  # Clean up matplotlib figure
+                else:
+                    st.warning("Data tidak cukup untuk analisis autocorrelation (minimal 30 data points)")
+            else:
+                st.warning("Statsmodels tidak tersedia untuk ACF plot")
+        except Exception as e:
+            st.error(f"Error membuat ACF plot: {str(e)}")
+
+        # Rolling Statistics
+        st.markdown("### 📊 Rolling Statistics (Mean & Std)")
+        try:
+            temp_df = processed_data.copy()  # Local copy
+            temp_df['Rolling_Mean'] = temp_df[analysis_col].rolling(window=7).mean()
+            temp_df['Rolling_Std'] = temp_df[analysis_col].rolling(window=7).std()
+            
+            fig_roll = px.line(
+                temp_df,
+                x=date_column,
+                y=[analysis_col, 'Rolling_Mean', 'Rolling_Std'],
+                template="plotly_dark",
+                title=f"Rolling Statistics - {analysis_col}"
+            )
+            fig_roll.update_layout(
+                yaxis_title='Value',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            st.plotly_chart(fig_roll, use_container_width=True, theme="streamlit")
+        except Exception as e:
+            st.error(f"Error membuat rolling statistics: {str(e)}")
+
+        # Scatter Matrix (Pair Plot)
+        if analysis_col2 != "None":
+            st.markdown("### 🔎 Scatter Matrix (Pair Plot)")
+            try:
+                scatter_cols = [analysis_col, analysis_col2]
+                fig_scatter_matrix = px.scatter_matrix(
+                    processed_data[scatter_cols],
+                    dimensions=scatter_cols,
+                    template="plotly_dark",
+                    color_discrete_sequence=['#FF7F50'],
+                    title=f"Scatter Matrix: {analysis_col} vs {analysis_col2}"
+                )
+                fig_scatter_matrix.update_layout(height=600)
+                st.plotly_chart(fig_scatter_matrix, use_container_width=True, theme="streamlit")
+            except Exception as e:
+                st.error(f"Error membuat scatter matrix: {str(e)}")
+
+            # Scatter Plot Antar Parameter
+            st.markdown("### 🔎 Scatter Plot Antar 2 Parameter")
+            try:
+                fig_scatter = px.scatter(
+                    processed_data,
+                    x=analysis_col,
+                    y=analysis_col2,
+                    template="plotly_dark",
+                    color_discrete_sequence=['#FF69B4'],
+                    title=f"Correlation: {analysis_col} vs {analysis_col2}"
+                )
+                fig_scatter.update_traces(marker=dict(size=8, opacity=0.7))
+                
+                # Add correlation coefficient
+                corr_coef = processed_data[[analysis_col, analysis_col2]].corr().iloc[0, 1]
+                fig_scatter.add_annotation(
+                    text=f"Correlation: {corr_coef:.3f}",
+                    xref="paper", yref="paper",
+                    x=0.02, y=0.98,
+                    showarrow=False,
+                    font=dict(size=14, color="white"),
+                    bgcolor="rgba(0,0,0,0.7)",
+                    bordercolor="#FF69B4",
+                    borderwidth=1
+                )
+                
+                st.plotly_chart(fig_scatter, use_container_width=True, theme="streamlit")
+            except Exception as e:
+                st.error(f"Error membuat scatter plot: {str(e)}")
+        
+        # Tombol Analisa AI - di akhir tab
+        st.markdown("---")
+        if st.button("🤖 Analisa AI PLTU ANGGREK", key="eda_ai_analysis"):
+            try:
+                with st.spinner("⏳ Menganalisis data dengan AI..."):
+                    st.markdown("#### 🤖 Insight PLTU Anggrek")
+                    
+                    # Pastikan fungsi get_ai_insight ada
+                    if 'get_ai_insight' in globals():
+                        clean_data = processed_data[analysis_col].dropna()
+                        ai_result = get_ai_insight(analysis_col, clean_data, "EDA Analysis")
+                        st.markdown(f"""
+                        <div style='background-color:#1E1E1E; padding:15px; border-radius:10px; border-left:4px solid #FFA500;'>
+                            {ai_result}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.info("Fitur AI analysis belum tersedia. Pastikan fungsi get_ai_insight sudah didefinisikan.")
+            except Exception as e:
+                st.error(f"Error dalam AI analysis: {str(e)}")
     
 with tab3:
     st.header("Deteksi Anomali (30 Hari Terakhir vs Pola Historis)")
