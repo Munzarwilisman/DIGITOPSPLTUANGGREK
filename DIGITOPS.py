@@ -18,7 +18,27 @@ if 'user_prompt' not in st.session_state:
 # =============================================
 # KONFIGURASI AWAL
 # =============================================
-client = anthropic.Anthropic(api_key=st.secrets["anthropic"]["api_key"])
+try:
+    api_key = st.secrets["anthropic"]["api_key"]
+except KeyError:
+    st.error("""
+    ❌ **API Key Anthropic tidak ditemukan!**
+    
+    Cara memperbaiki di Streamlit Cloud:
+    1. Klik **Manage app** (pojok kanan bawah)
+    2. Buka **Settings → Secrets**
+    3. Tambahkan konfigurasi berikut:
+    
+    ```toml
+    [anthropic]
+    api_key = "sk-ant-api03-XXXXXXXXXXXXXXXX"
+    ```
+    
+    Dapatkan API key di: https://console.anthropic.com
+    """)
+    st.stop()
+
+client = anthropic.Anthropic(api_key=api_key)
 
 
 # =============================================
@@ -58,7 +78,7 @@ Format jawaban HARUS mengikuti template berikut:
 """
     try:
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-haiku-4-5-20251001",
             max_tokens=2000,
             temperature=0.8,
             messages=[{"role": "user", "content": prompt}]
@@ -89,120 +109,202 @@ Format jawaban HARUS mengikuti template berikut:
 def get_anomaly_insight(parameter, anomaly_data, method, metrics, correlation_data=None):
     correlation_info = ""
     if correlation_data:
-        correlation_info = f"\n\nINFORMASI KORELASI PARAMETER:\n"
+        correlation_info = "\n\nINFORMASI KORELASI PARAMETER:\n"
         for i, (corr_param, corr_value, direction, strength, explanation) in enumerate(correlation_data[:3]):
             correlation_info += f"{i+1}. {corr_param}: {corr_value:.3f} ({direction}, {strength})\n"
             correlation_info += f"   - {explanation}\n"
 
     prompt = f"""
-Kamu adalah seorang ahli analisis data pembangkit listrik PLTU dengan boiler CFB dan Steam turbin kapasitas 25 MW.
-Data berikut berasal dari analisis parameter {parameter} pada PLTU menggunakan metode {method}.
+Kamu adalah seorang ahli analisis data pembangkit listrik PLTU dengan boiler CFB dan Steam turbin kapasitas 25 MW (Power Plant Performance Analyst). Referensimu adalah buku Boiler Operation & Design, Standar EPRI, ASME, dan standar industri lainnya.
 
-Detail analisis:
-- Jumlah anomali terdeteksi: {metrics['count']}
-- Persentase anomali: {metrics['percent']}
-- Anomali nilai tinggi: {metrics['high_count']}
-- Anomali nilai rendah: {metrics['low_count']}
-- Rata-rata nilai anomali: {metrics['mean']:.2f}
-- Rata-rata nilai normal historis: {metrics['hist_mean']:.2f}
-- Deviasi rata-rata: {metrics['deviation']:.2f}%
-{correlation_info}
+Data anomali berikut berasal dari parameter {{parameter}} pada PLTU menggunakan metode deteksi {{method}}.
 
-Format jawaban HARUS mengikuti template berikut:
-[ANALISIS] <jelasan teknis anomali>
-[PENYEBAB] <penyebab teknis dalam format berikut>
-1. Penyebab utama pertama
-   - Sub-detail pertama
-   - Sub-detail kedua
-2. Penyebab utama kedua
-   - Sub-detail pertama
-   - Sub-detail kedua
+STATISTIK ANOMALI:
+- Jumlah anomali terdeteksi: {{metrics['count']}}
+- Persentase anomali: {{metrics['percent']}}
+- Anomali nilai TINGGI (di atas normal): {{metrics['high_count']}} kejadian
+- Anomali nilai RENDAH (di bawah normal): {{metrics['low_count']}} kejadian
+- Rata-rata nilai saat anomali: {{metrics['mean']:.2f}}
+- Rata-rata nilai historis normal: {{metrics['hist_mean']:.2f}}
+- Deviasi terhadap nilai normal: {{metrics['deviation']:.2f}}%
+{{correlation_info}}
 
-[REKOMENDASI] <rekomendasi tindak lanjut spesifik>
-[DAMPAK] <potensi dampak jika diabaikan>
+INSTRUKSI: Berikan analisis teknis mendalam dan SPESIFIK untuk parameter {{parameter}} pada sistem PLTU. JANGAN berikan jawaban generik.
+
+Format jawaban WAJIB mengikuti template ini PERSIS:
+
+[ANALISIS]
+Tulis 3-4 kalimat penjelasan teknis mendalam tentang anomali {{parameter}}, karakteristik deviasi dan implikasinya pada sistem PLTU.
+
+[PENYEBAB]
+1. Penyebab pertama yang paling relevan dengan {{parameter}}
+   - Detail teknis sub-poin pertama
+   - Detail teknis sub-poin kedua
+   - Detail teknis sub-poin ketiga
+2. Penyebab kedua yang relevan dengan {{parameter}}
+   - Detail teknis sub-poin pertama
+   - Detail teknis sub-poin kedua
+   - Detail teknis sub-poin ketiga
+3. Penyebab ketiga yang relevan dengan {{parameter}}
+   - Detail teknis sub-poin pertama
+   - Detail teknis sub-poin kedua
+   - Detail teknis sub-poin ketiga
+4. Penyebab keempat yang relevan dengan {{parameter}}
+   - Detail teknis sub-poin pertama
+   - Detail teknis sub-poin kedua
+   - Detail teknis sub-poin ketiga
+
+[REKOMENDASI]
+1. Tindakan pertama SPESIFIK untuk {{parameter}}
+   - Langkah teknis detail pertama
+   - Langkah teknis detail kedua
+   - Target nilai atau parameter yang diharapkan
+2. Tindakan kedua SPESIFIK untuk {{parameter}}
+   - Langkah teknis detail pertama
+   - Langkah teknis detail kedua
+   - Alat atau metode yang digunakan
+3. Tindakan ketiga SPESIFIK untuk {{parameter}}
+   - Langkah teknis detail pertama
+   - Langkah teknis detail kedua
+   - Frekuensi atau jadwal pelaksanaan
+4. Tindakan keempat untuk monitoring lanjutan
+   - Parameter yang perlu dipantau bersama
+   - Threshold batas aman yang direkomendasikan
+   - Eskalasi jika anomali berlanjut
+
+[DAMPAK]
+Tulis 3-4 kalimat dampak spesifik jika anomali {{parameter}} dibiarkan: efisiensi termal, keandalan peralatan, konsumsi bahan bakar, dan keselamatan operasi PLTU.
 """
     try:
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-haiku-4-5-20251001",
             max_tokens=3000,
-            temperature=0.8,
-            messages=[{"role": "user", "content": prompt}]
+            temperature=0.7,
+            messages=[{{"role": "user", "content": prompt}}]
         )
         ai_content = response.content[0].text
-        sections = {
-            "ANALISIS": "🔬 **Analisis Teknis Anomali**",
-            "PENYEBAB": "⚠️ **Kemungkinan Penyebab**",
-            "REKOMENDASI": "🛠️ **Rekomendasi Tindak Lanjut**",
-            "DAMPAK": "💥 **Potensi Dampak**"
-        }
+
+        sections = {{
+            "ANALISIS": "\U0001f52c **Analisis Teknis Anomali**",
+            "PENYEBAB": "\u26a0\ufe0f **Kemungkinan Penyebab**",
+            "REKOMENDASI": "\U0001f6e0\ufe0f **Rekomendasi Tindak Lanjut**",
+            "DAMPAK": "\U0001f4a5 **Potensi Dampak**"
+        }}
 
         formatted_result = ""
         for section, header in sections.items():
-            section_tag = f"[{section}]"
+            section_tag = f"[{{section}}]"
             if section_tag in ai_content:
                 start_pos = ai_content.find(section_tag) + len(section_tag)
                 next_pos = len(ai_content)
-                for next_tag in [f"[{s}]" for s in sections.keys()]:
+                for next_tag in [f"[{{s}}]" for s in sections.keys()]:
                     tag_pos = ai_content.find(next_tag, start_pos)
                     if tag_pos > -1 and tag_pos < next_pos:
                         next_pos = tag_pos
                 section_content = ai_content[start_pos:next_pos].strip()
 
                 if section in ["PENYEBAB", "REKOMENDASI"]:
-                    lines = section_content.split('\n')
+                    lines_raw = section_content.split("\n")
                     formatted_lines = []
                     current_point = None
-                    for line in lines:
+                    for line in lines_raw:
                         line = line.strip()
                         if not line:
                             if current_point is not None and formatted_lines and formatted_lines[-1] != "":
                                 formatted_lines.append("")
                             continue
-                        number_match = re.match(r'^(\d+)\.(\s|$)', line)
+                        number_match = re.match(r"^(\d+)\.(\s|$)", line)
                         if number_match:
                             number = number_match.group(1)
                             rest_of_line = line[len(number_match.group(0)):].strip()
                             if current_point is not None and formatted_lines and formatted_lines[-1] != "":
                                 formatted_lines.append("")
                             current_point = number
-                            formatted_lines.append(f"**{number}.** {rest_of_line}")
-                        elif line.startswith(('*', '•', '-')):
+                            formatted_lines.append(f"**{{number}}.** {{rest_of_line}}")
+                        elif line.startswith(("*", "\u2022", "-")):
                             sub_content = line[1:].strip()
-                            formatted_lines.append(f"   - {sub_content}")
+                            formatted_lines.append(f"   - {{sub_content}}")
                         elif current_point is not None:
-                            if formatted_lines and formatted_lines[-1].startswith(f"**{current_point}.**"):
-                                last_line = formatted_lines[-1]
-                                formatted_lines[-1] = f"{last_line} {line}"
+                            if formatted_lines and formatted_lines[-1].startswith(f"**{{current_point}}.**"):
+                                formatted_lines[-1] = f"{{formatted_lines[-1]}} {{line}}"
                             else:
-                                formatted_lines.append(f"   - {line}")
+                                formatted_lines.append(f"   - {{line}}")
                         else:
                             current_point = "1" if not formatted_lines else str(int(current_point or "0") + 1)
-                            formatted_lines.append(f"**{current_point}.** {line}")
-                    section_content = '\n'.join(formatted_lines)
+                            formatted_lines.append(f"**{{current_point}}.** {{line}}")
+                    section_content = "\n".join(formatted_lines)
 
-                formatted_result += f"\n{header}\n{section_content}\n"
+                formatted_result += f"\n{{header}}\n{{section_content}}\n"
 
         return formatted_result if formatted_result else ai_content
 
     except Exception as e:
-        return f"""
-🔬 **Analisis Teknis Anomali**
-Anomali pada parameter {parameter} menunjukkan penyimpangan dari pola operasional normal.
+        dev = metrics["deviation"]
+        high = metrics["high_count"]
+        low = metrics["low_count"]
+        mean_val = metrics["mean"]
+        hist_mean = metrics["hist_mean"]
 
-⚠️ **Kemungkinan Penyebab**
-**1.** Masalah pada sensor atau instrumentasi
-   - Kalibrasi perlu diperiksa
-   - Kemungkinan drift pengukuran
+        return f"""\U0001f52c **Analisis Teknis Anomali**
+Parameter {{parameter}} menunjukkan {{metrics['count']}} anomali ({{metrics['percent']}}) dengan deviasi {{dev:.1f}}% terhadap nilai normal historis ({{hist_mean:.2f}}). Terdapat {{high}} kejadian nilai tinggi dan {{low}} kejadian nilai rendah yang menyimpang dari pola operasional normal. Deviasi sebesar {{abs(dev):.1f}}% ini mengindikasikan adanya gangguan signifikan yang memerlukan investigasi segera oleh tim operasi PLTU.
 
-🛠️ **Rekomendasi**
-**1.** Verifikasi sensor dan kalibrasi ulang
-**2.** Periksa riwayat maintenance
+\u26a0\ufe0f **Kemungkinan Penyebab**
 
-💥 **Potensi Dampak**
-Anomali yang diabaikan dapat memengaruhi efisiensi operasional.
+**1.** Gangguan pada sistem instrumentasi dan sensor pengukuran {{parameter}}
+   - Sensor mengalami drift kalibrasi akibat paparan suhu tinggi jangka panjang
+   - Koneksi wiring transmitter longgar atau terkorosi sehingga sinyal tidak stabil
+   - Impulse line tersumbat atau bocor menyebabkan pembacaan tidak akurat
+   - Zero/span adjustment pada transmitter bergeser dari nilai referensi
 
-*Error AI: {str(e)}*
-"""
+**2.** Perubahan kondisi operasional sistem yang mempengaruhi {{parameter}}
+   - Fluktuasi beban pembangkit melebihi kemampuan respon sistem kontrol otomatis
+   - Perubahan kualitas bahan bakar (ukuran partikel, kadar air, nilai kalor) yang tidak terduga
+   - Gangguan pada sistem kontrol DCS/PLC terkait loop kontrol parameter ini
+   - Interaksi antar parameter operasional yang memperburuk kondisi sistem
+
+**3.** Degradasi atau kerusakan mekanis pada peralatan terkait {{parameter}}
+   - Fouling atau deposisi abu pada komponen yang mempengaruhi aliran/tekanan
+   - Keausan komponen bergerak (bearing, seal, impeller) mendekati batas usia pakai
+   - Kebocoran internal atau eksternal yang mengurangi efisiensi sistem secara bertahap
+   - Vibrasi berlebihan yang menyebabkan ketidakstabilan pembacaan sensor
+
+**4.** Faktor eksternal dan kondisi lingkungan operasi
+   - Perubahan kondisi ambient (suhu udara, kelembaban) yang mempengaruhi performa sistem
+   - Gangguan pada sistem pendingin atau pelumasan komponen terkait
+   - Variasi kualitas air umpan atau steam yang mempengaruhi proses termal
+   - Interaksi dengan sistem auxiliary lain yang tidak terdeteksi sebelumnya
+
+\U0001f6e0\ufe0f **Rekomendasi Tindak Lanjut**
+
+**1.** Verifikasi dan kalibrasi ulang instrumentasi pengukuran {{parameter}}
+   - Lakukan cross-check pembacaan dengan portable instrument standar tersertifikasi
+   - Periksa kondisi fisik sensor, transmitter, dan impulse line secara visual menyeluruh
+   - Kalibrasi ulang menggunakan alat standar sesuai prosedur pabrikan
+   - Dokumentasikan hasil kalibrasi dan bandingkan dengan baseline historis sebelumnya
+
+**2.** Inspeksi visual dan pemeriksaan kondisi peralatan terkait {{parameter}}
+   - Lakukan walkthrough inspection pada semua komponen terkait parameter ini
+   - Periksa kondisi isolasi termal, gasket, dan flange connection di area terkait
+   - Ukur vibrasi dan temperatur bearing menggunakan thermal camera dan vibration meter
+   - Catat semua temuan dalam maintenance logbook untuk analisis tren jangka panjang
+
+**3.** Review dan optimasi parameter setting sistem kontrol
+   - Evaluasi setpoint dan tuning parameter PID controller yang terkait {{parameter}}
+   - Bandingkan trend data historis 30, 60, dan 90 hari terakhir untuk pola anomali
+   - Konsultasikan dengan vendor OEM jika diperlukan adjustment parameter kontrol
+   - Lakukan simulasi operasi pada beban berbeda untuk validasi respons sistem
+
+**4.** Implementasi monitoring intensif dan rencana tindak lanjut
+   - Tingkatkan frekuensi pembacaan manual dari 1x/shift menjadi setiap 2 jam
+   - Set alarm batas atas/bawah yang lebih ketat di DCS untuk deteksi dini anomali
+   - Siapkan prosedur contingency jika anomali berlanjut atau kondisi memburuk
+   - Jadwalkan inspeksi mendalam pada planned maintenance berikutnya sesuai WO
+
+\U0001f4a5 **Potensi Dampak**
+Anomali berkelanjutan pada {{parameter}} dengan deviasi {{abs(dev):.1f}}% berpotensi menurunkan efisiensi termal pembangkit secara signifikan dan meningkatkan konsumsi bahan bakar spesifik (heat rate). Jika tidak ditangani, kondisi ini dapat mempercepat keausan komponen terkait dan berujung pada forced outage yang tidak terencana. Dalam jangka panjang, operasi di luar batas normal parameter ini berisiko menyebabkan kerusakan permanen pada peralatan utama dengan biaya perbaikan besar dan downtime produksi signifikan.
+
+*\u26a0\ufe0f Catatan: Analisis fallback ditampilkan - koneksi AI terputus. Error: {{str(e)[:80]}}*"""
+
 
 
 def get_prediction_insight(input_param, input_value, results, correlations, method):
@@ -1069,7 +1171,7 @@ elif selected == "Machine Learning":
                 with st.spinner("Menganalisis dengan AI..."):
                     try:
                         response = client.messages.create(
-                            model="claude-3-5-sonnet-20241022",
+                            model="claude-haiku-4-5-20251001",
                             max_tokens=2000,
                             temperature=0.7,
                             messages=[{"role": "user", "content": f"""
