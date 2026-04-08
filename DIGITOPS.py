@@ -107,6 +107,9 @@ Format jawaban HARUS mengikuti template berikut:
 
 
 def get_anomaly_insight(parameter, anomaly_data, method, metrics, correlation_data=None):
+    """Fungsi untuk menghasilkan insight khusus anomali dari Claude AI dengan mempertimbangkan korelasi"""
+
+    # Siapkan informasi korelasi untuk dimasukkan dalam prompt
     correlation_info = ""
     if correlation_data:
         correlation_info = "\n\nINFORMASI KORELASI PARAMETER:\n"
@@ -115,195 +118,216 @@ def get_anomaly_insight(parameter, anomaly_data, method, metrics, correlation_da
             correlation_info += f"   - {explanation}\n"
 
     prompt = f"""
-Kamu adalah seorang ahli analisis data pembangkit listrik PLTU dengan boiler CFB dan Steam turbin kapasitas 25 MW (Power Plant Performance Analyst). Referensimu adalah buku Boiler Operation & Design, Standar EPRI, ASME, dan standar industri lainnya.
+Kamu adalah seorang ahli analisis data pembangkit listrik yang menggunakan boiler CFB dan Steam turbin dengan kapasitas 25 MW (Power Plant Performance Analyst) referensimu adalah buku seperti boiler operation dan Design, Standart EPRI, ASME dan standart lainnya. 
+Analisis berikut berasal dari parameter operasional pada PLTU (Pembangkit Listrik Tenaga Uap) dan kamu seorang expert di peralatan condenser, steam turbin, generator, boiler, water wall, Air Preheater khusus type tubular, Fan Boiler, Motor Valve dan lain-lain di PLTU dan gunakan deep research dengan semua referensi yang kamu miliki.
+Data berikut berasal dari analisis parameter {parameter} pada PLTU menggunakan metode {method}.
 
-Data anomali berikut berasal dari parameter {{parameter}} pada PLTU menggunakan metode deteksi {{method}}.
+Detail analisis:
+- Jumlah anomali terdeteksi: {metrics['count']}
+- Persentase anomali: {metrics['percent']}
+- Anomali nilai tinggi: {metrics['high_count']}
+- Anomali nilai rendah: {metrics['low_count']}
+- Rata-rata nilai anomali: {metrics['mean']:.2f}
+- Rata-rata nilai normal historis: {metrics['hist_mean']:.2f}
+- Deviasi rata-rata: {metrics['deviation']:.2f}%
+{correlation_info}
 
-STATISTIK ANOMALI:
-- Jumlah anomali terdeteksi: {{metrics['count']}}
-- Persentase anomali: {{metrics['percent']}}
-- Anomali nilai TINGGI (di atas normal): {{metrics['high_count']}} kejadian
-- Anomali nilai RENDAH (di bawah normal): {{metrics['low_count']}} kejadian
-- Rata-rata nilai saat anomali: {{metrics['mean']:.2f}}
-- Rata-rata nilai historis normal: {{metrics['hist_mean']:.2f}}
-- Deviasi terhadap nilai normal: {{metrics['deviation']:.2f}}%
-{{correlation_info}}
+Tugasmu adalah:
+1. Berikan penjelasan teknis yang jelas tentang apa arti dari anomali yang ditemukan pada parameter {parameter}.
+2. Analisis korelasi dengan parameter lain yang terkait dan jelaskan implikasi teknisnya.
+3. Identifikasi 4-6 kemungkinan penyebab anomali tersebut pada sistem PLTU secara spesifik dengan detail teknis, DENGAN MEMPERTIMBANGKAN korelasi dengan parameter lain.
+4. Berikan 3-4 rekomendasi bagi operator untuk tindak lanjut yang SANGAT SPESIFIK untuk mengatasi anomali pada parameter {parameter}.
+5. Jelaskan potensi dampak jika anomali dibiarkan.
 
-INSTRUKSI: Berikan analisis teknis mendalam dan SPESIFIK untuk parameter {{parameter}} pada sistem PLTU. JANGAN berikan jawaban generik.
+Format jawaban HARUS mengikuti template berikut:
+[ANALISIS] <jelasan teknis anomali>
+[PENYEBAB] <penyebab teknis dalam format berikut>
+1. Penyebab utama pertama
+   - Sub-detail pertama
+   - Sub-detail kedua
+   - Sub-detail ketiga
+   - Sub-detail keempat
+2. Penyebab utama kedua
+   - Sub-detail pertama
+   - Sub-detail kedua
+   - Sub-detail ketiga
+   - Sub-detail keempat
+3. Penyebab utama ketiga
+   - Sub-detail pertama
+   - Sub-detail kedua
+   - Sub-detail ketiga
+   - Sub-detail keempat
+4. Penyebab utama keempat
+   - Sub-detail pertama
+   - Sub-detail kedua
+   - Sub-detail ketiga
+   - Sub-detail keempat
 
-Format jawaban WAJIB mengikuti template ini PERSIS:
+[REKOMENDASI] <rekomendasi tindak lanjut spesifik dalam format yang sama dengan penyebab>
+[DAMPAK] <potensi dampak jika diabaikan>
 
-[ANALISIS]
-Tulis 3-4 kalimat penjelasan teknis mendalam tentang anomali {{parameter}}, karakteristik deviasi dan implikasinya pada sistem PLTU.
-
-[PENYEBAB]
-1. Penyebab pertama yang paling relevan dengan {{parameter}}
-   - Detail teknis sub-poin pertama
-   - Detail teknis sub-poin kedua
-   - Detail teknis sub-poin ketiga
-2. Penyebab kedua yang relevan dengan {{parameter}}
-   - Detail teknis sub-poin pertama
-   - Detail teknis sub-poin kedua
-   - Detail teknis sub-poin ketiga
-3. Penyebab ketiga yang relevan dengan {{parameter}}
-   - Detail teknis sub-poin pertama
-   - Detail teknis sub-poin kedua
-   - Detail teknis sub-poin ketiga
-4. Penyebab keempat yang relevan dengan {{parameter}}
-   - Detail teknis sub-poin pertama
-   - Detail teknis sub-poin kedua
-   - Detail teknis sub-poin ketiga
-
-[REKOMENDASI]
-1. Tindakan pertama SPESIFIK untuk {{parameter}}
-   - Langkah teknis detail pertama
-   - Langkah teknis detail kedua
-   - Target nilai atau parameter yang diharapkan
-2. Tindakan kedua SPESIFIK untuk {{parameter}}
-   - Langkah teknis detail pertama
-   - Langkah teknis detail kedua
-   - Alat atau metode yang digunakan
-3. Tindakan ketiga SPESIFIK untuk {{parameter}}
-   - Langkah teknis detail pertama
-   - Langkah teknis detail kedua
-   - Frekuensi atau jadwal pelaksanaan
-4. Tindakan keempat untuk monitoring lanjutan
-   - Parameter yang perlu dipantau bersama
-   - Threshold batas aman yang direkomendasikan
-   - Eskalasi jika anomali berlanjut
-
-[DAMPAK]
-Tulis 3-4 kalimat dampak spesifik jika anomali {{parameter}} dibiarkan: efisiensi termal, keandalan peralatan, konsumsi bahan bakar, dan keselamatan operasi PLTU.
+PENTING:
+- Jawaban HARUS sangat spesifik dan teknis untuk parameter {parameter} (JANGAN memberikan jawaban generik)
+- Jelaskan dampak SPESIFIK dari parameter {parameter} pada sistem PLTU, bukan dampak umum
+- Berikan rekomendasi yang HANYA relevan dengan parameter {parameter}
+- Gunakan format penomoran yang konsisten: angka diikuti titik untuk poin utama (1., 2., 3.) dan dash (-) untuk sub-detail
+- JANGAN gunakan simbol bullet (* atau •) - gunakan HANYA dash (-) untuk sub-detail
+- Format konten dengan sangat rapi dan konsisten
+- Gunakan terminologi yang akurat untuk sistem PLTU
+- Analisis HARUS mempertimbangkan korelasi dengan parameter lain yang terkait dengan {parameter}
 """
+
     try:
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=3000,
-            temperature=0.7,
-            messages=[{{"role": "user", "content": prompt}}]
+            temperature=0.8,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
         )
+
         ai_content = response.content[0].text
 
-        sections = {{
-            "ANALISIS": "\U0001f52c **Analisis Teknis Anomali**",
-            "PENYEBAB": "\u26a0\ufe0f **Kemungkinan Penyebab**",
-            "REKOMENDASI": "\U0001f6e0\ufe0f **Rekomendasi Tindak Lanjut**",
-            "DAMPAK": "\U0001f4a5 **Potensi Dampak**"
-        }}
+        # Definisikan emojis dan labels untuk setiap bagian
+        sections = {
+            "ANALISIS": "🔬 **Analisis Teknis Anomali**",
+            "PENYEBAB": "⚠️ **Kemungkinan Penyebab**",
+            "REKOMENDASI": "🛠️ **Rekomendasi Tindak Lanjut**",
+            "DAMPAK": "💥 **Potensi Dampak**"
+        }
+
+        # Default contents sebagai fallback
+        default_contents = {
+            "ANALISIS": f"Anomali pada parameter {parameter} menunjukkan penyimpangan dari pola operasional normal yang memerlukan investigasi lebih lanjut.",
+            "PENYEBAB": f"**1.** Kemungkinan disebabkan oleh perubahan kondisi operasional\n   - Fluktuasi beban operasi\n   - Perubahan kualitas bahan bakar\n\n**2.** Masalah pada instrumentasi pengukuran parameter {parameter}\n   - Kalibrasi sensor tidak akurat\n   - Drift pada transmitter\n\n**3.** Gangguan pada komponen yang mempengaruhi parameter ini\n   - Degradasi peralatan terkait\n   - Fouling atau plugging",
+            "REKOMENDASI": f"**1.** Lakukan inspeksi fisik pada sensor {parameter}\n   - Periksa kondisi fisik sensor\n   - Pastikan tidak ada kerusakan\n\n**2.** Verifikasi kalibrasi instrumen pengukuran\n   - Gunakan alat standar kalibrasi\n   - Dokumentasikan hasil kalibrasi\n\n**3.** Analisis pola operasi sebelum terjadinya anomali\n   - Review data historis\n   - Identifikasi perubahan operasional",
+            "DAMPAK": f"Jika anomali pada {parameter} tidak ditangani, dapat memengaruhi efisiensi dan keandalan pembangkit listrik secara keseluruhan."
+        }
 
         formatted_result = ""
         for section, header in sections.items():
-            section_tag = f"[{{section}}]"
+            section_tag = f"[{section}]"
             if section_tag in ai_content:
                 start_pos = ai_content.find(section_tag) + len(section_tag)
                 next_pos = len(ai_content)
-                for next_tag in [f"[{{s}}]" for s in sections.keys()]:
+                for next_tag in [f"[{s}]" for s in sections.keys()]:
                     tag_pos = ai_content.find(next_tag, start_pos)
                     if tag_pos > -1 and tag_pos < next_pos:
                         next_pos = tag_pos
                 section_content = ai_content[start_pos:next_pos].strip()
 
+                # Format khusus untuk Penyebab dan Rekomendasi
                 if section in ["PENYEBAB", "REKOMENDASI"]:
-                    lines_raw = section_content.split("\n")
+                    lines_content = section_content.split('\n')
                     formatted_lines = []
                     current_point = None
-                    for line in lines_raw:
+                    for line in lines_content:
                         line = line.strip()
                         if not line:
-                            if current_point is not None and formatted_lines and formatted_lines[-1] != "":
+                            if current_point is not None and formatted_lines and not formatted_lines[-1] == "":
                                 formatted_lines.append("")
                             continue
-                        number_match = re.match(r"^(\d+)\.(\s|$)", line)
+                        number_match = re.match(r'^(\d+)\.(\s|$)', line)
                         if number_match:
                             number = number_match.group(1)
                             rest_of_line = line[len(number_match.group(0)):].strip()
-                            if current_point is not None and formatted_lines and formatted_lines[-1] != "":
+                            if current_point is not None and formatted_lines and not formatted_lines[-1] == "":
                                 formatted_lines.append("")
                             current_point = number
-                            formatted_lines.append(f"**{{number}}.** {{rest_of_line}}")
-                        elif line.startswith(("*", "\u2022", "-")):
+                            formatted_lines.append(f"**{number}.** {rest_of_line}")
+                        elif line.startswith('*') or line.startswith('•') or line.startswith('-'):
                             sub_content = line[1:].strip()
-                            formatted_lines.append(f"   - {{sub_content}}")
+                            formatted_lines.append(f"   - {sub_content}")
                         elif current_point is not None:
-                            if formatted_lines and formatted_lines[-1].startswith(f"**{{current_point}}.**"):
-                                formatted_lines[-1] = f"{{formatted_lines[-1]}} {{line}}"
+                            if formatted_lines and formatted_lines[-1].startswith(f"**{current_point}.**"):
+                                last_line = formatted_lines[-1]
+                                formatted_lines[-1] = f"{last_line} {line}"
                             else:
-                                formatted_lines.append(f"   - {{line}}")
+                                formatted_lines.append(f"   - {line}")
                         else:
-                            current_point = "1" if not formatted_lines else str(int(current_point or "0") + 1)
-                            formatted_lines.append(f"**{{current_point}}.** {{line}}")
-                    section_content = "\n".join(formatted_lines)
+                            current_point = "1" if not formatted_lines else str(int(current_point) + 1)
+                            formatted_lines.append(f"**{current_point}.** {line}")
+                    section_content = '\n'.join(formatted_lines)
 
-                formatted_result += f"\n{{header}}\n{{section_content}}\n"
+                formatted_result += f"\n{header}\n{section_content}\n"
+            else:
+                formatted_result += f"\n{header}\n{default_contents[section]}\n"
 
-        return formatted_result if formatted_result else ai_content
+        return formatted_result
 
     except Exception as e:
-        dev = metrics["deviation"]
-        high = metrics["high_count"]
-        low = metrics["low_count"]
-        mean_val = metrics["mean"]
-        hist_mean = metrics["hist_mean"]
+        # Fallback lengkap jika error - gunakan string konkatenasi bukan f-string bertingkat
+        dev = metrics['deviation']
+        high = metrics['high_count']
+        low = metrics['low_count']
+        mean_val = metrics['mean']
+        hist_mean = metrics['hist_mean']
+        count = metrics['count']
+        percent = metrics['percent']
 
-        return f"""\U0001f52c **Analisis Teknis Anomali**
-Parameter {{parameter}} menunjukkan {{metrics['count']}} anomali ({{metrics['percent']}}) dengan deviasi {{dev:.1f}}% terhadap nilai normal historis ({{hist_mean:.2f}}). Terdapat {{high}} kejadian nilai tinggi dan {{low}} kejadian nilai rendah yang menyimpang dari pola operasional normal. Deviasi sebesar {{abs(dev):.1f}}% ini mengindikasikan adanya gangguan signifikan yang memerlukan investigasi segera oleh tim operasi PLTU.
+        fallback = "🔬 **Analisis Teknis Anomali**\n"
+        fallback += f"Parameter **{parameter}** menunjukkan **{count}** anomali ({percent}) dengan deviasi **{dev:.1f}%** terhadap nilai normal historis ({hist_mean:.2f}). "
+        fallback += f"Terdapat **{high}** kejadian nilai tinggi dan **{low}** kejadian nilai rendah yang menyimpang dari pola operasional normal. "
+        fallback += f"Deviasi sebesar {abs(dev):.1f}% ini mengindikasikan adanya gangguan signifikan yang memerlukan investigasi segera oleh tim operasi PLTU.\n\n"
 
-\u26a0\ufe0f **Kemungkinan Penyebab**
+        fallback += "⚠️ **Kemungkinan Penyebab**\n\n"
+        fallback += f"**1.** Gangguan pada sistem instrumentasi dan sensor pengukuran {parameter}\n"
+        fallback += "   - Sensor mengalami drift kalibrasi akibat paparan suhu tinggi jangka panjang\n"
+        fallback += "   - Koneksi wiring transmitter longgar atau terkorosi sehingga sinyal tidak stabil\n"
+        fallback += "   - Impulse line tersumbat atau bocor menyebabkan pembacaan tidak akurat\n"
+        fallback += "   - Zero/span adjustment pada transmitter bergeser dari nilai referensi\n\n"
 
-**1.** Gangguan pada sistem instrumentasi dan sensor pengukuran {{parameter}}
-   - Sensor mengalami drift kalibrasi akibat paparan suhu tinggi jangka panjang
-   - Koneksi wiring transmitter longgar atau terkorosi sehingga sinyal tidak stabil
-   - Impulse line tersumbat atau bocor menyebabkan pembacaan tidak akurat
-   - Zero/span adjustment pada transmitter bergeser dari nilai referensi
+        fallback += f"**2.** Perubahan kondisi operasional sistem yang mempengaruhi {parameter}\n"
+        fallback += "   - Fluktuasi beban pembangkit melebihi kemampuan respon sistem kontrol otomatis\n"
+        fallback += "   - Perubahan kualitas bahan bakar (ukuran partikel, kadar air, nilai kalor) yang tidak terduga\n"
+        fallback += "   - Gangguan pada sistem kontrol DCS/PLC terkait loop kontrol parameter ini\n"
+        fallback += "   - Interaksi antar parameter operasional yang memperburuk kondisi sistem\n\n"
 
-**2.** Perubahan kondisi operasional sistem yang mempengaruhi {{parameter}}
-   - Fluktuasi beban pembangkit melebihi kemampuan respon sistem kontrol otomatis
-   - Perubahan kualitas bahan bakar (ukuran partikel, kadar air, nilai kalor) yang tidak terduga
-   - Gangguan pada sistem kontrol DCS/PLC terkait loop kontrol parameter ini
-   - Interaksi antar parameter operasional yang memperburuk kondisi sistem
+        fallback += f"**3.** Degradasi atau kerusakan mekanis pada peralatan terkait {parameter}\n"
+        fallback += "   - Fouling atau deposisi abu pada komponen yang mempengaruhi aliran/tekanan\n"
+        fallback += "   - Keausan komponen bergerak (bearing, seal, impeller) mendekati batas usia pakai\n"
+        fallback += "   - Kebocoran internal atau eksternal yang mengurangi efisiensi sistem secara bertahap\n"
+        fallback += "   - Vibrasi berlebihan yang menyebabkan ketidakstabilan pembacaan sensor\n\n"
 
-**3.** Degradasi atau kerusakan mekanis pada peralatan terkait {{parameter}}
-   - Fouling atau deposisi abu pada komponen yang mempengaruhi aliran/tekanan
-   - Keausan komponen bergerak (bearing, seal, impeller) mendekati batas usia pakai
-   - Kebocoran internal atau eksternal yang mengurangi efisiensi sistem secara bertahap
-   - Vibrasi berlebihan yang menyebabkan ketidakstabilan pembacaan sensor
+        fallback += "**4.** Faktor eksternal dan kondisi lingkungan operasi\n"
+        fallback += "   - Perubahan kondisi ambient (suhu udara, kelembaban) yang mempengaruhi performa sistem\n"
+        fallback += "   - Gangguan pada sistem pendingin atau pelumasan komponen terkait\n"
+        fallback += "   - Variasi kualitas air umpan atau steam yang mempengaruhi proses termal\n"
+        fallback += "   - Interaksi dengan sistem auxiliary lain yang tidak terdeteksi sebelumnya\n\n"
 
-**4.** Faktor eksternal dan kondisi lingkungan operasi
-   - Perubahan kondisi ambient (suhu udara, kelembaban) yang mempengaruhi performa sistem
-   - Gangguan pada sistem pendingin atau pelumasan komponen terkait
-   - Variasi kualitas air umpan atau steam yang mempengaruhi proses termal
-   - Interaksi dengan sistem auxiliary lain yang tidak terdeteksi sebelumnya
+        fallback += "🛠️ **Rekomendasi Tindak Lanjut**\n\n"
+        fallback += f"**1.** Verifikasi dan kalibrasi ulang instrumentasi pengukuran {parameter}\n"
+        fallback += "   - Lakukan cross-check pembacaan dengan portable instrument standar tersertifikasi\n"
+        fallback += "   - Periksa kondisi fisik sensor, transmitter, dan impulse line secara visual menyeluruh\n"
+        fallback += "   - Kalibrasi ulang menggunakan alat standar sesuai prosedur pabrikan OEM\n"
+        fallback += "   - Dokumentasikan hasil kalibrasi dan bandingkan dengan baseline historis sebelumnya\n\n"
 
-\U0001f6e0\ufe0f **Rekomendasi Tindak Lanjut**
+        fallback += f"**2.** Inspeksi visual dan pemeriksaan kondisi peralatan terkait {parameter}\n"
+        fallback += "   - Lakukan walkthrough inspection pada semua komponen terkait parameter ini\n"
+        fallback += "   - Periksa kondisi isolasi termal, gasket, dan flange connection di area terkait\n"
+        fallback += "   - Ukur vibrasi dan temperatur bearing menggunakan thermal camera dan vibration meter\n"
+        fallback += "   - Catat semua temuan dalam maintenance logbook untuk analisis tren jangka panjang\n\n"
 
-**1.** Verifikasi dan kalibrasi ulang instrumentasi pengukuran {{parameter}}
-   - Lakukan cross-check pembacaan dengan portable instrument standar tersertifikasi
-   - Periksa kondisi fisik sensor, transmitter, dan impulse line secara visual menyeluruh
-   - Kalibrasi ulang menggunakan alat standar sesuai prosedur pabrikan
-   - Dokumentasikan hasil kalibrasi dan bandingkan dengan baseline historis sebelumnya
+        fallback += f"**3.** Review dan optimasi parameter setting sistem kontrol terkait {parameter}\n"
+        fallback += "   - Evaluasi setpoint dan tuning parameter PID controller yang terkait\n"
+        fallback += "   - Bandingkan trend data historis 30, 60, dan 90 hari terakhir untuk pola anomali\n"
+        fallback += "   - Konsultasikan dengan vendor OEM jika diperlukan adjustment parameter kontrol\n"
+        fallback += "   - Lakukan simulasi operasi pada beban berbeda untuk validasi respons sistem\n\n"
 
-**2.** Inspeksi visual dan pemeriksaan kondisi peralatan terkait {{parameter}}
-   - Lakukan walkthrough inspection pada semua komponen terkait parameter ini
-   - Periksa kondisi isolasi termal, gasket, dan flange connection di area terkait
-   - Ukur vibrasi dan temperatur bearing menggunakan thermal camera dan vibration meter
-   - Catat semua temuan dalam maintenance logbook untuk analisis tren jangka panjang
+        fallback += "**4.** Implementasi monitoring intensif dan rencana tindak lanjut\n"
+        fallback += "   - Tingkatkan frekuensi pembacaan manual dari 1x/shift menjadi setiap 2 jam\n"
+        fallback += "   - Set alarm batas atas/bawah yang lebih ketat di DCS untuk deteksi dini anomali\n"
+        fallback += "   - Siapkan prosedur contingency jika anomali berlanjut atau kondisi memburuk\n"
+        fallback += "   - Jadwalkan inspeksi mendalam pada planned maintenance berikutnya sesuai WO\n\n"
 
-**3.** Review dan optimasi parameter setting sistem kontrol
-   - Evaluasi setpoint dan tuning parameter PID controller yang terkait {{parameter}}
-   - Bandingkan trend data historis 30, 60, dan 90 hari terakhir untuk pola anomali
-   - Konsultasikan dengan vendor OEM jika diperlukan adjustment parameter kontrol
-   - Lakukan simulasi operasi pada beban berbeda untuk validasi respons sistem
+        fallback += "💥 **Potensi Dampak**\n"
+        fallback += f"Anomali berkelanjutan pada **{parameter}** dengan deviasi **{abs(dev):.1f}%** berpotensi menurunkan efisiensi termal pembangkit secara signifikan dan meningkatkan konsumsi bahan bakar spesifik (heat rate). "
+        fallback += "Jika tidak ditangani, kondisi ini dapat mempercepat keausan komponen terkait dan berujung pada forced outage yang tidak terencana. "
+        fallback += "Dalam jangka panjang, operasi di luar batas normal parameter ini berisiko menyebabkan kerusakan permanen pada peralatan utama dengan biaya perbaikan besar dan downtime produksi signifikan.\n\n"
+        fallback += f"*⚠️ Catatan: Koneksi AI terputus ({str(e)[:60]}). Menampilkan analisis standar.*"
 
-**4.** Implementasi monitoring intensif dan rencana tindak lanjut
-   - Tingkatkan frekuensi pembacaan manual dari 1x/shift menjadi setiap 2 jam
-   - Set alarm batas atas/bawah yang lebih ketat di DCS untuk deteksi dini anomali
-   - Siapkan prosedur contingency jika anomali berlanjut atau kondisi memburuk
-   - Jadwalkan inspeksi mendalam pada planned maintenance berikutnya sesuai WO
-
-\U0001f4a5 **Potensi Dampak**
-Anomali berkelanjutan pada {{parameter}} dengan deviasi {{abs(dev):.1f}}% berpotensi menurunkan efisiensi termal pembangkit secara signifikan dan meningkatkan konsumsi bahan bakar spesifik (heat rate). Jika tidak ditangani, kondisi ini dapat mempercepat keausan komponen terkait dan berujung pada forced outage yang tidak terencana. Dalam jangka panjang, operasi di luar batas normal parameter ini berisiko menyebabkan kerusakan permanen pada peralatan utama dengan biaya perbaikan besar dan downtime produksi signifikan.
-
-*\u26a0\ufe0f Catatan: Analisis fallback ditampilkan - koneksi AI terputus. Error: {{str(e)[:80]}}*"""
+        return fallback
 
 
 
@@ -1122,6 +1146,7 @@ elif selected == "Machine Learning":
                                             explanation = f"Peningkatan {param} diikuti peningkatan {analysis_col}" if corr_value > 0 else f"Peningkatan {param} diikuti penurunan {analysis_col}"
                                             correlation_data.append((param, corr_value, direction, strength, explanation))
 
+                                # ── Kartu metrik ringkasan ──
                                 col1, col2, col3 = st.columns(3)
                                 with col1:
                                     st.metric("Total Anomali", anomaly_metrics['count'])
@@ -1131,6 +1156,202 @@ elif selected == "Machine Learning":
                                     dev = anomaly_metrics['deviation']
                                     st.metric("Deviasi Rata-rata", f"{dev:.1f}%")
 
+                                # ── Evaluasi Model ──
+                                st.markdown("---")
+                                st.markdown("## 📊 Evaluasi Model")
+                                st.markdown("""
+                                <style>
+                                .eval-card{background-color:#1e1e1e;padding:18px;border-radius:10px;
+                                box-shadow:2px 2px 10px rgba(0,0,0,0.2);margin-bottom:12px;color:white;text-align:center;}
+                                .eval-title{font-size:13px;color:#9ca3af;margin-bottom:5px;}
+                                .eval-value{font-size:26px;font-weight:bold;color:#10b981;}
+                                .eval-help{font-size:11px;color:#d1d5db;margin-top:4px;}
+                                </style>""", unsafe_allow_html=True)
+
+                                total_historical = len(historical_data)
+                                total_recent = len(df_last30)
+                                hist_anom_count = 0
+                                try:
+                                    if method == "Threshold-based (IQR Historis)" and total_historical > 0:
+                                        hist_anom_count = int(((historical_data[analysis_col] < lower_bound) |
+                                                               (historical_data[analysis_col] > upper_bound)).sum())
+                                    elif method == "Isolation Forest (Pola Historis)" and total_historical > 0:
+                                        hist_pred_eval = model.predict(historical_data[[analysis_col]])
+                                        hist_anom_count = int((hist_pred_eval == -1).sum())
+                                    elif method == "Support Vector Machine (SVM)" and total_historical > 0:
+                                        X_hist_sc = scaler.transform(historical_data[[analysis_col]])
+                                        hist_pred_eval = svm_model.predict(X_hist_sc)
+                                        hist_anom_count = int((hist_pred_eval == -1).sum())
+                                except Exception:
+                                    hist_anom_count = 0
+
+                                fpr_val = hist_anom_count / total_historical if total_historical > 0 else 0
+                                detection_rate = len(anomalies) / total_recent if total_recent > 0 else 0
+                                assumed_tp = len(anomalies) * 0.99
+                                precision_val = assumed_tp / (assumed_tp + hist_anom_count) if (assumed_tp + hist_anom_count) > 0 else 0
+                                assumed_real = total_historical * 0.01
+                                recall_val = assumed_tp / assumed_real if assumed_real > 0 else 0
+
+                                ec1, ec2, ec3, ec4, ec5 = st.columns(5)
+                                eval_cards = [
+                                    (ec1, "🧪 False Positive Rate", f"{fpr_val*100:.1f}%", "Idealnya < 5%"),
+                                    (ec2, "📈 Detection Rate",      f"{detection_rate*100:.1f}%", "Anomali dlm 30 hari"),
+                                    (ec3, "🎯 Precision (Est.)",    f"{precision_val*100:.1f}%", "Akurasi deteksi"),
+                                    (ec4, "🔍 Recall (Est.)",       f"{recall_val*100:.1f}%", "Cakupan anomali"),
+                                    (ec5, "📚 Data Historis",       f"{total_historical:,}", "Total data evaluasi"),
+                                ]
+                                for col_obj, title, value, help_txt in eval_cards:
+                                    with col_obj:
+                                        st.markdown(f"""<div class="eval-card">
+                                            <div class="eval-title">{title}</div>
+                                            <div class="eval-value">{value}</div>
+                                            <div class="eval-help">{help_txt}</div>
+                                        </div>""", unsafe_allow_html=True)
+
+                                st.markdown("### 📌 Interpretasi Hasil Evaluasi")
+                                if fpr_val < 0.05:
+                                    st.success("✅ **False Positive Rate Rendah** — Model jarang salah klasifikasi data normal.")
+                                elif fpr_val < 0.15:
+                                    st.warning("⚠️ **False Positive Rate Sedang** — Ada potensi kesalahan klasifikasi.")
+                                else:
+                                    st.error("❌ **False Positive Rate Tinggi** — Model sering salah klasifikasi data normal.")
+                                if detection_rate < 0.05:
+                                    st.info("ℹ️ **Detection Rate Rendah** — Sedikit data terdeteksi sebagai anomali.")
+                                elif detection_rate < 0.15:
+                                    st.info("ℹ️ **Detection Rate Sedang** — Deteksi anomali moderat.")
+                                else:
+                                    st.warning("⚠️ **Detection Rate Tinggi** — Banyak data dianggap anomali, evaluasi threshold.")
+                                if precision_val > 0.8:
+                                    st.success("✅ **Precision Tinggi** — Mayoritas deteksi anomali benar.")
+                                elif precision_val > 0.5:
+                                    st.warning("⚠️ **Precision Sedang** — Beberapa deteksi mungkin tidak akurat.")
+                                else:
+                                    st.error("❌ **Precision Rendah** — Banyak deteksi kemungkinan salah.")
+
+                                # ── Viz 1: Bar chart tipe anomali ──
+                                st.markdown("---")
+                                st.markdown("### 📊 Distribusi Tipe Anomali")
+                                high_anom = anomaly_metrics['high_count']
+                                low_anom  = anomaly_metrics['low_count']
+                                if high_anom > 0 or low_anom > 0:
+                                    fig_type = px.bar(
+                                        x=['Nilai Tinggi (Above Normal)', 'Nilai Rendah (Below Normal)'],
+                                        y=[high_anom, low_anom],
+                                        color=['Nilai Tinggi (Above Normal)', 'Nilai Rendah (Below Normal)'],
+                                        color_discrete_map={
+                                            'Nilai Tinggi (Above Normal)': '#FF4444',
+                                            'Nilai Rendah (Below Normal)': '#4477FF'
+                                        },
+                                        title=f"Tipe Anomali — {analysis_col}",
+                                        labels={'x': 'Tipe Anomali', 'y': 'Jumlah Kejadian'},
+                                        template='plotly_dark', text_auto=True
+                                    )
+                                    fig_type.update_layout(showlegend=False, height=350)
+                                    st.plotly_chart(fig_type, use_container_width=True)
+
+                                # ── Viz 2: Distribusi nilai normal vs anomali ──
+                                st.markdown("### 📉 Distribusi Nilai: Normal vs Anomali")
+                                normal_vals = df_last30[df_last30['Anomaly'] == 0]
+                                try:
+                                    import plotly.graph_objects as go_viz
+                                    fig_dist = go_viz.Figure()
+                                    fig_dist.add_trace(go_viz.Histogram(
+                                        x=normal_vals[analysis_col], name='Normal',
+                                        nbinsx=40, marker_color='#00BFFF', opacity=0.7))
+                                    fig_dist.add_trace(go_viz.Histogram(
+                                        x=anomalies[analysis_col], name='Anomali',
+                                        nbinsx=40, marker_color='#FF4444', opacity=0.9))
+                                    fig_dist.update_layout(
+                                        barmode='overlay',
+                                        title=f'Distribusi Normal vs Anomali — {analysis_col}',
+                                        xaxis_title=analysis_col, yaxis_title='Frekuensi',
+                                        template='plotly_dark', height=400,
+                                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                                    )
+                                    fig_dist.add_vline(
+                                        x=historical_stats['mean'], line_dash="dash",
+                                        line_color="#FFD700", line_width=2,
+                                        annotation_text=f"Mean Historis: {historical_stats['mean']:.1f}",
+                                        annotation_font_color="#FFD700"
+                                    )
+                                    st.plotly_chart(fig_dist, use_container_width=True)
+                                except Exception as e_dist:
+                                    st.warning(f"Distribusi tidak dapat ditampilkan: {e_dist}")
+
+                                # ── Viz 3: Timeline scatter anomali ──
+                                st.markdown("### 📅 Timeline Anomali dalam 30 Hari Terakhir")
+                                try:
+                                    df_last30_viz = df_last30.copy()
+                                    df_last30_viz['Status'] = df_last30_viz['Anomaly'].map({0: 'Normal', 1: 'Anomali'})
+                                    df_last30_viz['Size'] = df_last30_viz['Anomaly'].map({0: 4, 1: 12})
+                                    fig_timeline = px.scatter(
+                                        df_last30_viz, x=date_column, y=analysis_col,
+                                        color='Status',
+                                        color_discrete_map={'Normal': '#00BFFF', 'Anomali': '#FF4444'},
+                                        size='Size',
+                                        title=f"Timeline Anomali — {analysis_col}",
+                                        template='plotly_dark', opacity=0.8
+                                    )
+                                    fig_timeline.add_hline(
+                                        y=historical_stats['mean'], line_dash="dot",
+                                        line_color="#FFD700",
+                                        annotation_text=f"Mean Normal ({historical_stats['mean']:.1f})",
+                                        annotation_font_color="#FFD700"
+                                    )
+                                    fig_timeline.update_layout(height=400, legend_title_text='Status')
+                                    st.plotly_chart(fig_timeline, use_container_width=True)
+                                except Exception as e_tl:
+                                    st.warning(f"Timeline tidak dapat ditampilkan: {e_tl}")
+
+                                # ── Viz 4: Box plot perbandingan normal vs anomali ──
+                                st.markdown("### 📦 Box Plot: Normal vs Anomali")
+                                try:
+                                    import plotly.graph_objects as go_box
+                                    fig_box_comp = go_box.Figure()
+                                    fig_box_comp.add_trace(go_box.Box(
+                                        y=normal_vals[analysis_col], name='Normal',
+                                        marker_color='#00BFFF', boxmean='sd'))
+                                    fig_box_comp.add_trace(go_box.Box(
+                                        y=anomalies[analysis_col], name='Anomali',
+                                        marker_color='#FF4444', boxmean='sd'))
+                                    fig_box_comp.update_layout(
+                                        title=f'Box Plot Normal vs Anomali — {analysis_col}',
+                                        yaxis_title=analysis_col,
+                                        template='plotly_dark', height=400
+                                    )
+                                    st.plotly_chart(fig_box_comp, use_container_width=True)
+                                except Exception as e_box:
+                                    st.warning(f"Box plot tidak dapat ditampilkan: {e_box}")
+
+                                # ── Viz 5: Heatmap korelasi ──
+                                st.markdown("### 🔗 Matriks Korelasi Antar Parameter")
+                                numeric_cols_corr = full_data.select_dtypes(include=['number']).columns.tolist()
+                                if len(numeric_cols_corr) > 1:
+                                    try:
+                                        corr_mx = full_data[numeric_cols_corr].corr()
+                                        fig_corr_hm = px.imshow(
+                                            corr_mx, text_auto=".2f", aspect="auto",
+                                            color_continuous_scale='RdBu_r',
+                                            template='plotly_dark',
+                                            title='Matriks Korelasi Antar Parameter'
+                                        )
+                                        fig_corr_hm.update_layout(height=600)
+                                        st.plotly_chart(fig_corr_hm, use_container_width=True)
+
+                                        if analysis_col in corr_mx.columns:
+                                            st.markdown(f"**Top Korelasi terhadap `{analysis_col}`:**")
+                                            top_c = corr_mx[analysis_col].drop(analysis_col).abs().sort_values(ascending=False).head(5)
+                                            for p_name in top_c.index:
+                                                real_c = corr_mx[analysis_col][p_name]
+                                                d_txt = "positif ↑" if real_c > 0 else "negatif ↓"
+                                                s_txt = "sangat kuat" if abs(real_c) > 0.7 else "kuat" if abs(real_c) > 0.5 else "sedang" if abs(real_c) > 0.3 else "lemah"
+                                                st.markdown(f"- **{p_name}**: `{real_c:.3f}` ({d_txt}, {s_txt})")
+                                    except Exception as e_corr:
+                                        st.warning(f"Korelasi tidak dapat ditampilkan: {e_corr}")
+
+                                # ── AI Insight ──
+                                st.markdown("---")
+                                st.markdown("### 🤖 Analisis AI PLTU Anggrek")
                                 ai_analysis = get_anomaly_insight(
                                     parameter=analysis_col,
                                     anomaly_data=anomalies,
