@@ -1053,7 +1053,7 @@ with tab1:
     st.header("Persiapan Data (Seluruh Periode)")
         
         # Step 1: Pilih parameter target untuk pemfilteran
-        st.subheader("1. Pilih Parameter Target untuk Pemfilteran Data")
+    st.subheader("1. Pilih Parameter Target untuk Pemfilteran Data")
         filter_param = st.selectbox(
             "Pilih Parameter untuk Pemfilteran Data:",
             options=df.select_dtypes(include=['number']).columns.tolist(),
